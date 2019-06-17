@@ -540,6 +540,7 @@ void CTimer::InterruptHandler (void *pParam)
 	pThis->InterruptHandler ();
 }
 
+
 void CTimer::TuneMsDelay (void)
 {
 	unsigned nTicks = GetTicks ();

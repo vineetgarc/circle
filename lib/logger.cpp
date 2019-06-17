@@ -82,13 +82,21 @@ CLogger::~CLogger (void)
 
 boolean CLogger::Initialize (CDevice *pTarget)
 {
+	u32 l, h, actlr;
 	m_pTarget = pTarget;
 
+	Write ("======", LogNotice, "");
 	Write ("logger", LogNotice, CIRCLE_NAME " " CIRCLE_VERSION_STRING " started on %s"
 #if AARCH == 64
 	       " (AArch64)"
 #endif
 	       , CMachineInfo::Get ()->GetMachineName ());
+
+	extern u32 vineet, boot_mode_stock, boot_mode_smc;
+	asm volatile ("mrrc p15, 0, %0, %1, c15" : "=r" (l), "=r" (h));
+	asm volatile ("mrc p15, 0, %0, c1, c0, 1" : "=r" (actlr));
+	Write ("----", LogNotice, "--> CPUACTLR %x:%x  ACTLR %x flag %x",l, h, actlr, vineet);
+	Write ("----", LogNotice, "--> CPSR (CPU mode) [stock] %x [in smc hdlr] %x", boot_mode_stock, boot_mode_smc);
 
 	return TRUE;
 }

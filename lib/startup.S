@@ -31,7 +31,62 @@
  * This macro is intended for forcing the CPU into SVC mode at boot time.
  * you cannot return to the original mode.
  */
+
+.macro  clear_L1PCTL
+
+	/* try to change CPUACTRLR.L1PCTL */
+	mrrc	15, 0, r4, r5, cr15
+	bic	r4, r4, #0xe000
+	orr	r4, r4, #0x20000000
+	mcrr	15, 0, r4, r5, cr15
+
+.endm
+
+.macro dofoobar
+
+	mrs r1, cpsr
+	ldr r2, .Lbm_stock
+	str r1, [r2]
+
+	//Get the vector base address from the System Control register.
+	mrc p15, #0, r0, cr12, cr0, #0
+	ldr r1, .LSecureVectorTable
+
+	ldmia r1!, {r2-r9}
+	stmia r0!, {r2-r9}
+	ldmia r1!, {r2-r9}
+	stmia r0!, {r2-r9}
+
+	//Clean Data Cache MVA
+	mov r12, #0
+	mcr p15, #0, r12, cr7, cr10, #1
+
+	dsb
+
+	//Invalidate Instruction Cache
+	mov r12, #0
+	mcr p15, #0, r12, cr7, cr5, #0
+
+	//Flush Branch Target Cache
+	mov r12, #0
+	mcr p15, #0, r12, cr7, cr5, #6
+
+	dsb
+	isb
+
+	smc #0
+
+	ldr r2, .Lvineet
+	ldr r3, [r2]
+	add r3, r3, #0x10
+	str r3, [r2]
+
+.endm
+
+
 	.macro safe_svcmode_maskall reg:req
+
+	dofoobar
 
 	mrs	\reg , cpsr
 	eor	\reg, \reg, #0x1A		/* test for HYP mode */
@@ -108,5 +163,75 @@ _start_secondary:
 #endif
 
 #endif
+
+.LSecureVectorTable:
+	.word SecureVectorTable
+
+	.globl	SecureVectorTable
+SecureVectorTable:
+	ldr pc, .Lhdlr1
+	ldr pc, .Lhdlr1
+	ldr pc, .Lhdlr2
+	ldr pc, .Lhdlr1
+	ldr pc, .Lhdlr1
+	ldr pc, .Lhdlr1
+	ldr pc, .Lhdlr1
+	ldr pc, .Lhdlr1
+
+.Lhdlr1:
+	.word nop_hdlr
+.Lhdlr2:
+	.word smc_hdlr
+
+
+	.globl	nop_hdlr
+nop_hdlr:
+	movs pc, lr
+
+	.globl	smc_hdlr
+smc_hdlr:
+
+#if 0
+	//Read the SCR (Secure Configuration Register)
+	mrc p15, #0, r1, cr1, cr1, #0
+	//Clear the NS bit
+	bic r1, r1, #1
+	//Write the SCR (with NS bit clear)
+	mcr p15, #0, r1, cr1, cr1, #0
+#endif
+
+	clear_L1PCTL
+
+	mrs r1, cpsr
+	ldr r2, .Lbm_smc
+	str r1, [r2]
+
+	ldr r2, .Lvineet
+	ldr r3, [r2]
+	add r3, r3, #0x1
+	str r3, [r2]
+
+	movs pc, lr
+
+
+.Lvineet:
+	.word vineet
+.Lbm_stock:
+	.word boot_mode_stock
+.Lbm_smc:
+	.word boot_mode_smc
+
+
+	.globl	vineet
+vineet:
+	.word  0xdead0000
+
+	.globl	boot_mode_stock
+boot_mode_stock:
+	.word  0xdead0000
+
+	.globl	boot_mode_smc
+boot_mode_smc:
+	.word  0xdead0000
 
 /* End */
