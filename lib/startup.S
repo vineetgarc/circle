@@ -54,8 +54,8 @@
 
 	ldmia r1!, {r2-r9}
 	stmia r0!, {r2-r9}
-	ldmia r1!, {r2-r9}
-	stmia r0!, {r2-r9}
+	ldmia r1!, {r2-r3}
+	stmia r0!, {r2-r3}
 
 	//Clean Data Cache MVA
 	mov r12, #0
